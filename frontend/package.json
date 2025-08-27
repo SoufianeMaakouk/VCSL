@@ -1,0 +1,25 @@
+{
+  "name": "signlang-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^4.5.2",                // state management
+    "three": "^0.160.0",                 // 3D avatar rendering
+    "react-three-fiber": "^8.15.10",    // Three.js + React
+    "react-use-websocket": "^4.5.0",    // signaling client
+    "simple-peer": "^9.11.1"            // WebRTC wrapper
+  },
+  "devDependencies": {
+    "vite": "^5.2.0",
+    "typescript": "^5.3.3",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0"
+  }
+}
