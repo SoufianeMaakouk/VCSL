@@ -1,25 +1,23 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-import re
 
 app = FastAPI()
 
-# Load dictionary
-import json
-with open("gloss-dictionary.json") as f:
-    GLOSS_DICT = json.load(f)
+# simple dictionary
+GLOSS_DICT = {
+    "hello": "HELLO_SIGN",
+    "come": "COME_SIGN",
+    "thanks": "THANKS_SIGN"
+}
 
-class ASRInput(BaseModel):
+class InputText(BaseModel):
     text: str
 
 @app.post("/translate")
-def translate(asr: ASRInput):
-    words = asr.text.lower().split()
-    glosses = []
+def translate(data: InputText):
+    words = data.text.lower().split()
+    result = []
     for w in words:
-        gloss = GLOSS_DICT.get(w, None)
-        if gloss:
-            glosses.append({"word": w, "gloss": gloss})
-        else:
-            glosses.append({"word": w, "gloss": f"FINGERSPELL({w})"})
-    return {"glosses": glosses}
+        gloss = GLOSS_DICT.get(w, f"FINGERSPELL({w})")
+        result.append({"word": w, "gloss": gloss})
+    return {"glosses": result}
