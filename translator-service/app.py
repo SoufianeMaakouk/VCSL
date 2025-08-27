@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
+import os
 
 app = FastAPI()
 
@@ -23,6 +24,7 @@ async def translate(input: TextInput):
     sign = SIGN_LANGUAGE_DICT.get(text, f"❓ (No sign found for '{text}')")
     return {"original": input.text, "sign": sign}
 
-# Local dev / Render
+# Local dev / vercel
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
