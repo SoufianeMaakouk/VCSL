@@ -1,55 +1,74 @@
-import React, { useState, useEffect, useRef } from "react";
-import Avatar from "./Avatar";
+import React, { useEffect, useRef, useState } from "react";
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls, useGLTF, useAnimations } from "@react-three/drei";
 
 export default function App() {
-  const [sign, setSign] = useState<string>("idle");
+  const [sign, setSign] = useState<string>("");
   const audioRef = useRef<MediaStream | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
+  // --- Avatar component ---
+  const Avatar = ({ animationKey }: { animationKey: string }) => {
+    const { scene, animations } = useGLTF("/assets/avatar.glb") as any;
+    const { actions } = useAnimations(animations, scene as any);
+
+    useEffect(() => {
+      if (animationKey && actions[animationKey]) {
+        actions[animationKey].reset().fadeIn(0.2).play();
+        // Stop after 2 seconds (adjust as needed)
+        setTimeout(() => actions[animationKey].fadeOut(0.2), 2000);
+      }
+    }, [animationKey, actions]);
+
+    return <primitive object={scene} />;
+  };
+
+  const [currentAnimation, setCurrentAnimation] = useState<string>("");
+
+  // --- Capture microphone ---
   useEffect(() => {
-    // Ask for microphone access
     navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
       audioRef.current = stream;
-      startStreamingAudio(stream);
+
+      // Setup WebSocket or API to stream audio to Whisper
+      const ws = new WebSocket("wss://your-whisper-backend.example.com");
+      wsRef.current = ws;
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      mediaRecorder.ondataavailable = (e) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(e.data); // send audio chunk
+        }
+      };
+
+      mediaRecorder.start(1000); // send audio every second
+
+      ws.onmessage = (msg) => {
+        const data = JSON.parse(msg.data);
+        const text: string = data.transcript?.toLowerCase() || "";
+        setSign(text);
+
+        // Map text to animation key
+        if (text.includes("hello")) setCurrentAnimation("hello");
+        else if (text.includes("thank you")) setCurrentAnimation("thank_you");
+        else if (text.includes("yes")) setCurrentAnimation("yes");
+        else if (text.includes("no")) setCurrentAnimation("no");
+      };
     });
   }, []);
 
-  const startStreamingAudio = (stream: MediaStream) => {
-    const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-
-    mediaRecorder.ondataavailable = async (e) => {
-      if (e.data.size > 0) {
-        const formData = new FormData();
-        formData.append("audio", e.data, "audio.webm");
-
-        try {
-          // Send audio blob to your backend
-          const res = await fetch("YOUR_BACKEND_ENDPOINT/audio_translate", {
-            method: "POST",
-            body: formData,
-          });
-
-          const data = await res.json();
-
-          // Map returned translation to avatar animation
-          if (data.sign.toLowerCase().includes("hello")) setSign("hello");
-          else if (data.sign.toLowerCase().includes("yes")) setSign("yes");
-          else if (data.sign.toLowerCase().includes("no")) setSign("no");
-          else setSign("idle");
-        } catch (err) {
-          console.error("Error translating audio:", err);
-          setSign("idle");
-        }
-      }
-    };
-
-    mediaRecorder.start(1000); // send audio chunks every 1 second
-  };
-
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Live Sign Language Avatar</h1>
-      <p>Speak and watch the avatar sign in real time!</p>
-      <Avatar animationKey={sign} />
+    <div style={{ width: "100vw", height: "100vh" }}>
+      <Canvas camera={{ position: [0, 1, 3] }}>
+        <ambientLight intensity={0.5} />
+        <pointLight position={[10, 10, 10]} />
+        <Avatar animationKey={currentAnimation} />
+        <OrbitControls />
+      </Canvas>
+
+      <div style={{ position: "absolute", bottom: 20, left: 20, fontSize: 18 }}>
+        Live transcription: <strong>{sign}</strong>
+      </div>
     </div>
   );
 }
