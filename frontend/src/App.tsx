@@ -51,7 +51,7 @@ export default function App() {
   // --- Translator test function ---
   const callTranslator = async () => {
     try {
-      const res = await fetch("https://vcsl-1.onrender.com/translate", {
+      const res = await fetch("https://translator-service-production-dce4.up.railway.app/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: "hello" }),
