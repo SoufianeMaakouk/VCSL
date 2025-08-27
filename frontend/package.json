@@ -10,11 +10,7 @@
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "zustand": "^4.5.2",                // state management
-    "three": "^0.160.0",                 // 3D avatar rendering
-    "react-three-fiber": "^8.15.10",    // Three.js + React
-    "react-use-websocket": "^4.5.0",    // signaling client
-    "simple-peer": "^9.11.1"            // WebRTC wrapper
+    "simple-peer": "^9.11.1"
   },
   "devDependencies": {
     "vite": "^5.2.0",
