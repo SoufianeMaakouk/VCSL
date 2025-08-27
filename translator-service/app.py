@@ -1,13 +1,14 @@
-import os
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
 
 app = FastAPI()
 
+# Request body
 class TextInput(BaseModel):
     text: str
 
+# Dummy dictionary for translation
 SIGN_LANGUAGE_DICT = {
     "hello": "👋 (HELLO sign)",
     "how are you": "🙏 (HOW ARE YOU sign)",
@@ -22,6 +23,6 @@ async def translate(input: TextInput):
     sign = SIGN_LANGUAGE_DICT.get(text, f"❓ (No sign found for '{text}')")
     return {"original": input.text, "sign": sign}
 
+# Local dev / Render
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=10000)
