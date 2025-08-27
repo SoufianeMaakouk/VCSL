@@ -1,3 +1,4 @@
+pip>=25.2
 fastapi==0.110.0
 uvicorn==0.29.0
 pydantic==2.6.3
