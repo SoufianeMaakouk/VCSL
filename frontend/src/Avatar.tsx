@@ -1,26 +1,37 @@
 import React, { useRef, useEffect } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, useGLTF, useAnimations } from "@react-three/drei";
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls, useGLTF } from "@react-three/drei";
+import * as THREE from "three";
 
 interface AvatarProps {
-  animationKey: string;
+  animationKey: string; // Animation to play
 }
 
 function AvatarModel({ animationKey }: AvatarProps) {
   const group = useRef<THREE.Group>(null!);
   const { scene, animations } = useGLTF("/assets/avatar.glb") as any;
-  const { actions, mixer } = useAnimations(animations, group);
 
   useEffect(() => {
-    Object.values(actions).forEach((a) => a.stop());
-    if (actions[animationKey]) {
-      actions[animationKey].reset().fadeIn(0.2).play();
-    } else if (actions["idle"]) {
-      actions["idle"].reset().fadeIn(0.2).play();
-    }
-  }, [animationKey, actions]);
+    const mixer = new THREE.AnimationMixer(scene);
 
-  useFrame((state, delta) => mixer.update(delta));
+    // Find animation by name
+    const clip = animations.find(
+      (a: any) => a.name.toLowerCase() === animationKey.toLowerCase()
+    );
+
+    if (clip) {
+      const action = mixer.clipAction(clip);
+      action.reset().fadeIn(0.2).play();
+    }
+
+    const clock = new THREE.Clock();
+
+    const animate = () => {
+      requestAnimationFrame(animate);
+      mixer.update(clock.getDelta());
+    };
+    animate();
+  }, [animationKey, scene, animations]);
 
   return <primitive ref={group} object={scene} />;
 }
