@@ -15,7 +15,7 @@ export default function App() {
       setStream(s);
 
       // connect websocket to signaling server
-      const ws = new WebSocket("https://vcsl.onrender.com");
+      const ws = new WebSocket("wss://translator-service-production-dce4.up.railway.app/live-translate");
       wsRef.current = ws;
 
       ws.onopen = () => {
