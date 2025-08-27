@@ -1,32 +1,34 @@
 import React, { useEffect, useRef, useState } from "react";
 import Peer from "simple-peer";
+import Avatar from "./Avatar";
+
+const SIGN_ANIMATIONS: Record<string, string> = {
+  "👋 (HELLO sign)": "hello",
+  "🙏 (HOW ARE YOU sign)": "howAreYou",
+  "🤟 (THANK YOU sign)": "thankYou",
+  "👍 (YES sign)": "yes",
+  "👎 (NO sign)": "no",
+};
 
 export default function App() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const [sign, setSign] = useState<string>("");
+  const [sign, setSign] = useState<string>("idle");
 
   const wsRef = useRef<WebSocket | null>(null);
   const peerRef = useRef<Peer.Instance | null>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
+  // --- Video call setup ---
   useEffect(() => {
-    // 1️⃣ Get webcam and microphone
     navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((s) => {
       setStream(s);
 
-      // 2️⃣ Connect to signaling server
-      const ws = new WebSocket("https://vcsl.onrender.com");
+      const ws = new WebSocket("wss://your-signaling-server"); // replace with signaling server
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log("Connected to signaling server");
-
-        // 3️⃣ Create initiator peer
         const peer = new Peer({ initiator: true, trickle: false, stream: s });
-        peer.on("signal", (signal) => {
-          ws.send(JSON.stringify({ type: "offer", signal }));
-        });
+        peer.on("signal", (signal) => ws.send(JSON.stringify({ type: "offer", signal })));
         peer.on("stream", (remote) => setRemoteStream(remote));
         peerRef.current = peer;
       };
@@ -35,9 +37,7 @@ export default function App() {
         const data = JSON.parse(event.data);
         if (data.type === "offer") {
           const peer = new Peer({ initiator: false, trickle: false, stream: s });
-          peer.on("signal", (signal) => {
-            ws.send(JSON.stringify({ type: "answer", signal }));
-          });
+          peer.on("signal", (signal) => ws.send(JSON.stringify({ type: "answer", signal })));
           peer.on("stream", (remote) => setRemoteStream(remote));
           peer.signal(data.signal);
           peerRef.current = peer;
@@ -45,36 +45,10 @@ export default function App() {
           peerRef.current.signal(data.signal);
         }
       };
-
-      // 4️⃣ Start speech recognition
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = "en-US";
-
-        recognition.onresult = async (event: SpeechRecognitionEvent) => {
-          const transcript = Array.from(event.results)
-            .map((result) => result[0].transcript)
-            .join("")
-            .trim()
-            .toLowerCase();
-
-          if (transcript) {
-            callTranslator(transcript);
-          }
-        };
-
-        recognition.start();
-        recognitionRef.current = recognition;
-      } else {
-        console.warn("SpeechRecognition API not supported in this browser.");
-      }
     });
   }, []);
 
-  // Translator API call
+  // --- Translator function ---
   const callTranslator = async (text: string) => {
     try {
       const res = await fetch(
@@ -86,31 +60,26 @@ export default function App() {
         }
       );
       const data = await res.json();
-      setSign(data.sign);
+      setSign(SIGN_ANIMATIONS[data.sign] || "idle");
     } catch (err) {
       console.error("Translator error:", err);
-      setSign("⚠️ Translator service unreachable");
+      setSign("idle");
     }
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: "20px" }}>
-      <div style={{ display: "flex", gap: "20px" }}>
+    <div style={{ display: "flex", gap: "20px" }}>
+      <div>
+        <h2>My Camera</h2>
+        {stream && <video autoPlay playsInline muted ref={(v) => v && (v.srcObject = stream)} />}
+        <h2>Remote Camera</h2>
+        {remoteStream && <video autoPlay playsInline ref={(v) => v && (v.srcObject = remoteStream)} />}
         <div>
-          <h2>My Camera</h2>
-          {stream && <video autoPlay playsInline muted ref={(v) => v && (v.srcObject = stream)} />}
-        </div>
-        <div>
-          <h2>Remote Camera</h2>
-          {remoteStream && <video autoPlay playsInline ref={(v) => v && (v.srcObject = remoteStream)} />}
+          <button onClick={() => callTranslator("hello")}>Translate "hello"</button>
         </div>
       </div>
 
-      <div>
-        <p style={{ marginTop: "10px", fontSize: "18px" }}>
-          Live Sign Translation: <strong>{sign}</strong>
-        </p>
-      </div>
+      <Avatar animationKey={sign} />
     </div>
   );
 }
