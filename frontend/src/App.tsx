@@ -8,20 +8,21 @@ export default function App() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const peerRef = useRef<Peer.Instance | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
-    // get webcam
+    // 1️⃣ Get webcam and microphone
     navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((s) => {
       setStream(s);
 
-      // connect websocket to signaling server
-      const ws = new WebSocket("wss://translator-service-production-dce4.up.railway.app/live-translate");
+      // 2️⃣ Connect to signaling server
+      const ws = new WebSocket("https://vcsl.onrender.com");
       wsRef.current = ws;
 
       ws.onopen = () => {
         console.log("Connected to signaling server");
 
-        // create initiator peer
+        // 3️⃣ Create initiator peer
         const peer = new Peer({ initiator: true, trickle: false, stream: s });
         peer.on("signal", (signal) => {
           ws.send(JSON.stringify({ type: "offer", signal }));
@@ -33,7 +34,6 @@ export default function App() {
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.type === "offer") {
-          // create peer when receiving offer
           const peer = new Peer({ initiator: false, trickle: false, stream: s });
           peer.on("signal", (signal) => {
             ws.send(JSON.stringify({ type: "answer", signal }));
@@ -45,17 +45,46 @@ export default function App() {
           peerRef.current.signal(data.signal);
         }
       };
+
+      // 4️⃣ Start speech recognition
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = "en-US";
+
+        recognition.onresult = async (event: SpeechRecognitionEvent) => {
+          const transcript = Array.from(event.results)
+            .map((result) => result[0].transcript)
+            .join("")
+            .trim()
+            .toLowerCase();
+
+          if (transcript) {
+            callTranslator(transcript);
+          }
+        };
+
+        recognition.start();
+        recognitionRef.current = recognition;
+      } else {
+        console.warn("SpeechRecognition API not supported in this browser.");
+      }
     });
   }, []);
 
-  // --- Translator test function ---
-  const callTranslator = async () => {
+  // Translator API call
+  const callTranslator = async (text: string) => {
     try {
-      const res = await fetch("https://translator-service-production-dce4.up.railway.app/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: "hello" }),
-      });
+      const res = await fetch(
+        "https://translator-service-production-dce4.up.railway.app/translate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        }
+      );
       const data = await res.json();
       setSign(data.sign);
     } catch (err) {
@@ -78,17 +107,9 @@ export default function App() {
       </div>
 
       <div>
-        <button
-          onClick={callTranslator}
-          style={{ padding: "10px 20px", background: "#2563eb", color: "white", borderRadius: "8px" }}
-        >
-          Translate "hello"
-        </button>
-        {sign && (
-          <p style={{ marginTop: "10px", fontSize: "18px" }}>
-            Translation: <strong>{sign}</strong>
-          </p>
-        )}
+        <p style={{ marginTop: "10px", fontSize: "18px" }}>
+          Live Sign Translation: <strong>{sign}</strong>
+        </p>
       </div>
     </div>
   );
