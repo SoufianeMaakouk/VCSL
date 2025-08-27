@@ -1,46 +1,55 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Avatar from "./Avatar";
 
 export default function App() {
   const [sign, setSign] = useState<string>("idle");
+  const audioRef = useRef<MediaStream | null>(null);
 
-  // Function to call translator API
-  const callTranslator = async (text: string) => {
-    try {
-      const res = await fetch(
-        "https://translator-service-production-dce4.up.railway.app/translate",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
+  useEffect(() => {
+    // Ask for microphone access
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      audioRef.current = stream;
+      startStreamingAudio(stream);
+    });
+  }, []);
+
+  const startStreamingAudio = (stream: MediaStream) => {
+    const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+
+    mediaRecorder.ondataavailable = async (e) => {
+      if (e.data.size > 0) {
+        const formData = new FormData();
+        formData.append("audio", e.data, "audio.webm");
+
+        try {
+          // Send audio blob to your backend
+          const res = await fetch("YOUR_BACKEND_ENDPOINT/audio_translate", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await res.json();
+
+          // Map returned translation to avatar animation
+          if (data.sign.toLowerCase().includes("hello")) setSign("hello");
+          else if (data.sign.toLowerCase().includes("yes")) setSign("yes");
+          else if (data.sign.toLowerCase().includes("no")) setSign("no");
+          else setSign("idle");
+        } catch (err) {
+          console.error("Error translating audio:", err);
+          setSign("idle");
         }
-      );
-      const data = await res.json();
+      }
+    };
 
-      // Map translation to animation name
-      if (data.sign.toLowerCase().includes("hello")) setSign("hello");
-      else if (data.sign.toLowerCase().includes("yes")) setSign("yes");
-      else if (data.sign.toLowerCase().includes("no")) setSign("no");
-      else setSign("idle"); // fallback
-    } catch (err) {
-      console.error("Translator error:", err);
-      setSign("idle");
-    }
+    mediaRecorder.start(1000); // send audio chunks every 1 second
   };
 
   return (
     <div style={{ padding: "20px" }}>
       <h1>Live Sign Language Avatar</h1>
-      <input
-        type="text"
-        placeholder="Type something..."
-        onKeyDown={(e) => {
-          if (e.key === "Enter") callTranslator((e.target as HTMLInputElement).value);
-        }}
-      />
-      <div style={{ marginTop: "20px" }}>
-        <Avatar animationKey={sign} />
-      </div>
+      <p>Speak and watch the avatar sign in real time!</p>
+      <Avatar animationKey={sign} />
     </div>
   );
 }
