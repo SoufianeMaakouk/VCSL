@@ -1,6 +1,7 @@
 {
-  "name": "frontend",
+  "name": "vcsl-frontend",
   "version": "1.0.0",
+  "private": true,
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -9,13 +10,12 @@
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "simple-peer": "^9.11.0",
-    "three": "^0.164.0",
-    "@react-three/fiber": "^8.14.0",
-    "@react-three/drei": "^9.56.0"
+    "three": "^0.160.0",
+    "simple-peer": "^9.12.0"
   },
   "devDependencies": {
-    "vite": "^4.4.0",
-    "typescript": "^5.2.0"
+    "@vitejs/plugin-react": "^4.0.0",
+    "typescript": "^5.2.2",
+    "vite": "^5.2.0"
   }
 }
